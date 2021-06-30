@@ -6,10 +6,10 @@ from cgco import _cgco
 # make sure pairwise * smooth = unary so that the unary potentials and pairwise
 # potentials are on the same scale.
 _MAX_ENERGY_TERM_SCALE = 10000000 
-_UNARY_FLOAT_PRECISION = 100000
-_PAIRWISE_FLOAT_PRECISION = 100000 #1000
+_UNARY_FLOAT_PRECISION = 1000000
+_PAIRWISE_FLOAT_PRECISION = 1000000 #1000
 _SMOOTH_COST_PRECISION = 1 #100
-_LABEL_COST_PRECISION = 100000
+_LABEL_COST_PRECISION = 1000000
 
 _int_types = [np.int, np.intc, np.int32, np.int64, np.longlong]
 _float_types = [np.float, np.float32, np.float64, np.float128]
@@ -31,6 +31,9 @@ class DataTypeNotSupportedError(PyGcoError):
     pass
 
 class IndexOutOfBoundError(PyGcoError):
+    pass
+
+class IntegerOverflowRiskError(PyGcoError):
     pass
 
 
@@ -114,6 +117,13 @@ class gco(object):
 
         # Just a reference
         self._unary = self._convertUnaryArray(unary)
+
+        # Safety check
+        if np.max(self._unary) > _MAX_ENERGY_TERM_SCALE:
+            raise IntegerOverflowRiskError(
+                "Unary cost maximum = {}, exceeds {}. Aborting for risk of integer overflow in gco.".format(np.max(self._unary), _MAX_ENERGY_TERM_SCALE))
+
+
         _cgco.gcoSetDataCost(self.handle, self._unary)
 
     def setSiteDataCost(self, site, label, e):
@@ -121,7 +131,16 @@ class gco(object):
         e should be of type int or float (python primitive type)."""
         if site >= self.numSites or site < 0 or label < 0 or label >= self.numLabels:
             raise IndexOutOfBoundError()
-        _cgco.gcoSetSiteDataCost(self.handle, np.intc(site), np.intc(label), self._convertUnaryTerm(e))
+
+        scaled_e = self._convertUnaryTerm(e)
+
+        # Safety check
+        if scaled_e > _MAX_ENERGY_TERM_SCALE:
+            raise IntegerOverflowRiskError(
+                "Unary cost = {}, exceeds {}. Aborting for risk of integer overflow in gco.".format(scaled_e, _MAX_ENERGY_TERM_SCALE))
+
+
+        _cgco.gcoSetSiteDataCost(self.handle, np.intc(site), np.intc(label), scaled_e)
 
     def setNeighborPair(self, s1, s2, w):
         """Create an edge (s1, s2) with weight w.
@@ -129,7 +148,15 @@ class gco(object):
         s1 should be smaller than s2."""
         if not (0 <= s1 < s2 < self.numSites):
             raise IndexOutOfBoundError()
-        _cgco.gcoSetNeighborPair(self.handle, np.intc(s1), np.intc(s2), self._convertPairwiseTerm(w))
+
+        scaled_w = self._convertPairwiseTerm(w)
+
+        # Safety check
+        if scaled_w > _MAX_ENERGY_TERM_SCALE:
+            raise IntegerOverflowRiskError(
+                "Edge weight = {}, exceeds {}. Aborting for risk of integer overflow in gco.".format(scaled_w, _MAX_ENERGY_TERM_SCALE))
+
+        _cgco.gcoSetNeighborPair(self.handle, np.intc(s1), np.intc(s2), w)
 
     def setAllNeighbors(self, s1, s2, w):
         """Setup the whole neighbor system in the graph.
@@ -148,6 +175,12 @@ class gco(object):
         self._edgeS2 = s2.astype(np.intc)
         self._edgeW = self._convertPairwiseArray(w)
 
+        # Safety check
+        if np.max(self._edgeW) > _MAX_ENERGY_TERM_SCALE:
+            raise IntegerOverflowRiskError(
+                "Edge weights maximum = {}, exceeds {}. Aborting for risk of integer overflow in gco.".format(np.max(self._edgeW), _MAX_ENERGY_TERM_SCALE))
+
+
         _cgco.gcoSetAllNeighbors(
                 self.handle, self._edgeS1, self._edgeS2, self._edgeW, np.intc(self._edgeS1.size))
 
@@ -164,14 +197,30 @@ class gco(object):
 
         # Just a reference
         self._smoothCost = self._convertSmoothCostArray(cost)
+
+        # Safety check
+        if np.max(self._smoothCost) > _MAX_ENERGY_TERM_SCALE:
+            raise IntegerOverflowRiskError(
+                "Smooth cost maximum = {}, exceeds {}. Aborting for risk of integer overflow in gco.".format(np.max(self._smoothCost), _MAX_ENERGY_TERM_SCALE))
+
+
         _cgco.gcoSetSmoothCost(self.handle, self._smoothCost)
 
     def setPairSmoothCost(self, l1, l2, cost):
         """Set smooth cost for a pair of labels l1, l2."""
         if not (0 <= l1 < self.numLabels) or not (0 <= l2 < self.numLabels):
             raise IndexOutOfBoundError()
+
+        scaled_cost = self._convertSmoothCostTerm(cost)
+
+        # Safety check
+        if scaled_cost > _MAX_ENERGY_TERM_SCALE:
+            raise IntegerOverflowRiskError(
+                "Smooth cost = {}, exceeds {}. Aborting for risk of integer overflow in gco.".format(scaled_cost, _MAX_ENERGY_TERM_SCALE))
+
+
         _cgco.setPairSmoothCost(
-                self.handle, np.intc(l1), np.intc(l2), self._convertSmoothCostTerm(cost))
+                self.handle, np.intc(l1), np.intc(l2), scaled_cost)
 
     def setLabelCosts(self, costs):
         if not (len(costs) == self.numLabels):
@@ -179,6 +228,12 @@ class gco(object):
 
         # Just a reference
         self._label_cost = self._convertLabelCostArray(costs)
+
+        # Safety check
+        if np.max(self._label_cost) > _MAX_ENERGY_TERM_SCALE:
+            raise IntegerOverflowRiskError(
+                "Label cost maximum = {}, exceeds {}. Aborting for risk of integer overflow in gco.".format(np.max(self._label_cost), _MAX_ENERGY_TERM_SCALE))
+
 
         _cgco.gcoSetLabelCost(
             self.handle,
