@@ -7,8 +7,9 @@ from cgco import _cgco
 # potentials are on the same scale.
 _MAX_ENERGY_TERM_SCALE = 10000000 
 _UNARY_FLOAT_PRECISION = 100000
-_PAIRWISE_FLOAT_PRECISION = 1000
-_SMOOTH_COST_PRECISION = 100
+_PAIRWISE_FLOAT_PRECISION = 100000 #1000
+_SMOOTH_COST_PRECISION = 1 #100
+_LABEL_COST_PRECISION = 100000
 
 _int_types = [np.int, np.intc, np.int32, np.int64, np.longlong]
 _float_types = [np.float, np.float32, np.float64, np.float128]
@@ -91,6 +92,12 @@ class gco(object):
         else:
             return np.intc(e)
 
+    def _convertLabelCostArray(self, e):
+        if self.energyIsFloat:
+            return (e * _LABEL_COST_PRECISION).astype(np.intc)
+        else:
+            return e.astype(np.intc)
+
     def _convertEnergyBack(self, e):
         if self.energyIsFloat:
             return float(e) / _UNARY_FLOAT_PRECISION
@@ -166,6 +173,18 @@ class gco(object):
         _cgco.setPairSmoothCost(
                 self.handle, np.intc(l1), np.intc(l2), self._convertSmoothCostTerm(cost))
 
+    def setLabelCosts(self, costs):
+        if not (len(costs) == self.numLabels):
+            raise ShapeMismatchError('Label cost array does not contain {} elements'.format(self.numLabels))
+
+        # Just a reference
+        self._label_cost = self._convertLabelCostArray(costs)
+
+        _cgco.gcoSetLabelCost(
+            self.handle,
+            self._label_cost
+        )
+
     def expansion(self, niters=-1):
         """Do alpha-expansion for specified number of iterations. 
         Return total energy after the expansion moves.
@@ -231,7 +250,7 @@ class gco(object):
         _cgco.gcoInitLabelAtSite(self.handle, np.intc(site), np.intc(label))
 
 
-def cut_general_graph(edges, edge_weights, unary_cost, pairwise_cost, 
+def cut_general_graph(edges, edge_weights, unary_cost, pairwise_cost, label_cost=None,
         n_iter=-1, algorithm='expansion', init_labels=None, down_weight_factor=None):
     """
     Apply multi-label graph cuts to arbitrary graph given by `edges`.
@@ -289,20 +308,23 @@ def cut_general_graph(edges, edge_weights, unary_cost, pairwise_cost,
     gc.setAllNeighbors(edges[:,0], edges[:,1], edge_weights / down_weight_factor)
     gc.setSmoothCost(pairwise_cost)
 
+    if label_cost is not None:
+        gc.setLabelCosts(label_cost / down_weight_factor)
+
     # initialize labels
     if init_labels is not None:
         for i in range(n_sites):
             gc.initLabelAtSite(i, init_labels[i])
 
     if algorithm == 'expansion':
-        gc.expansion(n_iter)
+        energy = gc.expansion(n_iter)
     else:
-        gc.swap(n_iter)
+        energy = gc.swap(n_iter)
 
     labels = gc.getLabels()
     gc.destroyGraph()
 
-    return labels
+    return labels, energy * down_weight_factor
 
 def cut_grid_graph(unary_cost, pairwise_cost, costV, costH, 
         n_iter=-1, algorithm='expansion'):

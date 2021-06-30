@@ -55,6 +55,9 @@ _cgco.gcoSetPairSmoothCost.argtypes = [_handle_type, _label_id_type,
                                        _label_id_type, _energy_term_type]
 _cgco.gcoSetPairSmoothCost.restypes = ct.c_int
 
+_cgco.gcoSetLabelCost.argtypes = [_handle_type, _energy_term_ptr_type]
+_cgco.gcoSetLabelCost.restypes = ct.c_int
+
 _cgco.gcoExpansion.argtypes = [_handle_type, ct.c_int, _energy_ptr_type]
 _cgco.gcoExpansion.restypes = ct.c_int
 

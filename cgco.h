@@ -66,6 +66,15 @@ extern "C" int gcoSetSmoothCost(int handle, EnergyTermType *e);
 extern "C" int gcoSetPairSmoothCost(int handle, LabelID l1, LabelID l2, EnergyTermType e);
 
 /**
+ * Set the label cost for all labels
+ *
+ * e is a vector of length nLabel.
+ *
+ * labelCost(l) = e[l]
+ */
+extern "C" int gcoSetLabelCost(int handle, EnergyTermType *e);
+
+/**
  * Do alpha-expansion for a specified number of iterations.
  *
  * Return the total energy after the expansion moves.
