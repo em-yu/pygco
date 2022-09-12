@@ -5,11 +5,11 @@ from cgco import _cgco
 # keep 4 effective digits for the fractional part if using real potentials
 # make sure pairwise * smooth = unary so that the unary potentials and pairwise
 # potentials are on the same scale.
-_MAX_ENERGY_TERM_SCALE = 10000000 
-_UNARY_FLOAT_PRECISION = 1000000
-_PAIRWISE_FLOAT_PRECISION = 1000000 #1000
+_MAX_ENERGY_TERM_SCALE = 1000000000 
+_UNARY_FLOAT_PRECISION = 10000000
+_PAIRWISE_FLOAT_PRECISION = 10000000 #1000
 _SMOOTH_COST_PRECISION = 1 #100
-_LABEL_COST_PRECISION = 1000000
+_LABEL_COST_PRECISION = 10000000
 
 _int_types = [np.int, np.intc, np.int32, np.int64, np.longlong]
 _float_types = [np.float, np.float32, np.float64, np.float128]
@@ -61,7 +61,10 @@ class gco(object):
 
     def _convertUnaryArray(self, e):
         if self.energyIsFloat:
-            return (e * _UNARY_FLOAT_PRECISION).astype(np.intc)
+            unary_array_int = (e * _UNARY_FLOAT_PRECISION).astype(np.intc)
+            # zeroed_out_values = np.flatnonzero(np.logical_and(unary_array_int == 0, e != 0))
+            # print("{} zeroed out values in unary: {}".format(len(zeroed_out_values), e.flatten()[zeroed_out_values]))
+            return unary_array_int
         else:
             return e.astype(np.intc)
 
@@ -73,7 +76,10 @@ class gco(object):
 
     def _convertPairwiseArray(self, e):
         if self.energyIsFloat:
-            return (e * _PAIRWISE_FLOAT_PRECISION).astype(np.intc)
+            pairwise_array_int = (e * _PAIRWISE_FLOAT_PRECISION).astype(np.intc)
+            # zeroed_out_values = np.flatnonzero(np.logical_and(pairwise_array_int == 0, e != 0))
+            # print("{} zeroed out values in pairwise: {}".format(len(zeroed_out_values), e.flatten()[zeroed_out_values]))
+            return pairwise_array_int
         else:
             return e.astype(np.intc)
 
@@ -97,7 +103,11 @@ class gco(object):
 
     def _convertLabelCostArray(self, e):
         if self.energyIsFloat:
-            return (e * _LABEL_COST_PRECISION).astype(np.intc)
+            # print(e)
+            label_array_int = (e * _LABEL_COST_PRECISION).astype(np.intc)
+            # zeroed_out_values = np.flatnonzero(np.logical_and(label_array_int == 0, e != 0))
+            # print("{} zeroed out values in label : {}".format(len(zeroed_out_values), e.flatten()[zeroed_out_values]))
+            return label_array_int
         else:
             return e.astype(np.intc)
 
