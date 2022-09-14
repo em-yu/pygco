@@ -5,6 +5,12 @@ from cgco import _cgco
 # keep 4 effective digits for the fractional part if using real potentials
 # make sure pairwise * smooth = unary so that the unary potentials and pairwise
 # potentials are on the same scale.
+
+# Emilie: I bumped the max safe coefficient because in my use case,
+# we sometimes have super high single coefficients without getting integer overflow
+# Works in practice, but if you get integer overflows, this might be the cause :)
+# Originally _MAX_ENERGY_TERM_SCALE = 10000000 , _UNARY_FLOAT_PRECISION = _LABEL_COST_PRECISION = 1000000
+# (this needs to be changed both here and as a build variable in Makefile)
 _MAX_ENERGY_TERM_SCALE = 1000000000 
 _UNARY_FLOAT_PRECISION = 10000000
 _PAIRWISE_FLOAT_PRECISION = 10000000 #1000

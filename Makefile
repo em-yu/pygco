@@ -1,5 +1,5 @@
 CXX=g++
-CFLAGS=-fPIC
+CFLAGS=-fPIC -DGCO_MAX_ENERGYTERM=1000000000
 
 all: libcgco.so
 
